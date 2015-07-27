@@ -1,0 +1,17 @@
+Source: ka-lite-gtk
+Maintainer: Foundation for Learning Equality <info@learningequality.org>
+Section: python
+Priority: optional
+Build-Depends: python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 7.4.3)
+Standards-Version: 3.9.1
+
+
+
+Package: ka-lite-gtk
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, gir1.2-gtk-3.0, python-gi, ka-lite | ka-lite-bundle | ka-lite-raspberry-pi
+Description: Control Panel for KA Lite (GTK3)
+Homepage: https://learningequality.org/ka-lite/
+
+
+

@@ -1,0 +1,37 @@
+# Config file for automatic testing at travis-ci.org
+
+language: python
+
+python:
+  - "3.2"  # Only 3.2 works with Gir, 3.4 is not avail. for system sitepackages
+  - "2.7"
+
+env:
+  - GI_INSTALL="python3-gi"
+  - GI_INSTALL="python-gi"
+
+matrix:
+  exclude:
+    - env: GI_INSTALL="python3-gi"
+      python: "2.7"
+    - env: GI_INSTALL="python-gi"
+      python: "3.2"
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -qq $GI_INSTALL gir1.2-gtk-3.0 gtk+3.0
+  - "export DISPLAY=:99.0"
+  - sh -e /etc/init.d/xvfb start
+
+virtualenv:
+  system_site_packages: true
+
+# command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
+install:
+  - pip install -r requirements.txt
+  - pip install pep8
+
+# command to run tests, e.g. python setup.py test
+script:
+  - make lint
+  - python setup.py test

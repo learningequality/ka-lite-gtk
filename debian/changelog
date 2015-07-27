@@ -1,0 +1,24 @@
+ka-lite-gtk (0.2a2ubuntu1) precise; urgency=medium
+
+  * New alpha
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Sun, 26 Jul 2015 03:40:53 +0200
+
+ka-lite-gtk (0.2a1ubuntu1) precise; urgency=medium
+
+  * New upstream release
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Sun, 26 Jul 2015 00:15:43 +0200
+
+ka-lite-gtk (0.1a2) precise; urgency=medium
+
+  * New alpha release
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Sat, 25 Jul 2015 23:38:05 +0200
+
+ka-lite-gtk (0.1.0) precise; urgency=low
+
+  * ba5e06c copyright and change package name
+
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Sat, 25 Jul 2015 21:16:43 +0000
