@@ -1,9 +1,13 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
+import os
+import subprocess
+import shlex
+
 from gi.repository import Gtk, Gdk, GLib, Pango
 from pkg_resources import resource_filename  # @UnresolvedImport
-import logging
 
 from . import cli
 from kalite_gtk import validators
@@ -160,12 +164,29 @@ class Handler:
             self.log_message(stderr)
         GLib.idle_add(button.set_sensitive, False)
 
+    def on_radiobutton_user_default_clicked(self, radiobutton):
+        if cli.settings['user'] == cli.DEFAULT_USER:
+            if 'user' in self.unsaved_settings:
+                del self.unsaved_settings['user']
+            return
+        self.unsaved_settings['user'] = cli.DEFAULT_USER
+        self.settings_changed()
+
+    def on_radiobutton_username_clicked(self, radiobutton):
+        self.mainwindow.username_entry.grab_focus()
+
     def settings_changed(self):
         """
         We should make individual handlers for widgets, but this is easier...
         """
+        if not self.unsaved_settings:
+            self.mainwindow.settings_feedback_label.set_label(
+                ''
+            )
+            return
         cli.settings.update(self.unsaved_settings)
         cli.save_settings()
+        self.unsaved_settings = {}
         self.mainwindow.settings_feedback_label.set_label(
             'Settings OK - they will be saved and take effect when you restart the server!'
         )
@@ -173,6 +194,9 @@ class Handler:
     def log_message(self, msg):
         """Logs a message using idle callback"""
         GLib.idle_add(self.mainwindow.log_message, msg)
+
+    def on_open_log_button_clicked(self, button):
+        p = subprocess.Popen(shlex.split('xdg-open') + [os.path.join(cli.settings['home'], 'server.log')])
 
 
 class MainWindow:
