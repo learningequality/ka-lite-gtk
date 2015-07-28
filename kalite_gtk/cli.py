@@ -46,6 +46,7 @@ else:
 
 # KA Lite Debian convention
 # Set new default values from debian system files
+debian_username = None
 if os.path.isfile(DEBIAN_USERNAME_FILE):
     debian_username = open(DEBIAN_USERNAME_FILE, 'r').read()
     debian_username = debian_username.split('\n')[0]
@@ -87,6 +88,10 @@ settings = {
 if os.path.isfile(KALITE_GTK_SETTINGS_FILE):
     try:
         loaded_settings = json.load(open(KALITE_GTK_SETTINGS_FILE, 'r'))
+        if debian_username:
+            # Do NOT load the username from the settings file if we are
+            # using /etc/ka-lite/username -- they can get out of sync
+            del loaded_settings['user']
         for (k, v) in loaded_settings.items():
             try:
                 settings[k] = validate[k](v) if k in validate else v
