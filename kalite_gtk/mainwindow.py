@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def run_async(func):
     """
-    http://code.activestate.com/recipes/576684-simple-threading-decorator/
+    http://code.activestate.com/recipes/576683-simple-threading-decorator/
 
         run_async(func)
             function decorator, intended to make "func" run in a separate
@@ -65,6 +65,7 @@ class Handler:
     def on_start_button_clicked(self, button):
         self.log_message("Starting KA Lite...\n")
         GLib.idle_add(button.set_sensitive, False)
+        GLib.idle_add(self.mainwindow.goto_log_page)
         for stdout, stderr, returncode in cli.start():
             if stdout:
                 self.log_message(stdout)
@@ -78,6 +79,7 @@ class Handler:
     @run_async
     def on_stop_button_clicked(self, button):
         GLib.idle_add(button.set_sensitive, False)
+        GLib.idle_add(self.mainwindow.goto_log_page)
         self.log_message("Stopping KA Lite...\n")
         for stdout, stderr, returncode in cli.stop():
             if stdout:
@@ -107,6 +109,7 @@ class Handler:
     @run_async
     def on_startup_service_button_clicked(self, button):
         GLib.idle_add(button.set_sensitive, False)
+        GLib.idle_add(self.mainwindow.goto_log_page)
         if cli.is_installed():
             self.log_message("Removing startup service\n")
             stdout, stderr, returncode = cli.remove()
@@ -127,7 +130,7 @@ class Handler:
             if returncode:
                 self.log_message("Failed to install startup service\n")
             self.log_message("Installed!\n")
-        GLib.idle_add(self.mainwindow.set_from_settngs)
+        GLib.idle_add(self.mainwindow.set_from_settings)
         GLib.idle_add(button.set_sensitive, True)
 
     def on_username_entry_changed(self, entry):
@@ -196,7 +199,7 @@ class Handler:
         GLib.idle_add(self.mainwindow.log_message, msg)
 
     def on_open_log_button_clicked(self, button):
-        p = subprocess.Popen(shlex.split('xdg-open') + [os.path.join(cli.settings['home'], 'server.log')])
+        subprocess.Popen(shlex.split('xdg-open') + [os.path.join(cli.settings['home'], 'server.log')])
 
 
 class MainWindow:
@@ -229,6 +232,7 @@ class MainWindow:
         self.settings_feedback_label = self.builder.get_object('settings_feedback_label')
         self.start_stop_instructions_label = self.builder.get_object('start_stop_instructions_label')
         self.save_and_restart_button = self.builder.get_object('save_and_restart_button')
+        self.main_notebook = self.builder.get_object('main_notebook')
 
         # Save old label so we can continue to replace text
         self.start_stop_instructions_label_original_text = self.start_stop_instructions_label.get_label()
@@ -273,6 +277,19 @@ class MainWindow:
 
     def log_message(self, msg):
         self.log.insert_at_cursor(msg)
+
+    def goto_log_page(self):
+        """Switches to the log tab"""
+        page_num = 3
+        # This returns type 'guint' which we can't convert
+        # self.main_notebook.page_num(
+        #    self.log_textview,
+        # )
+        self.main_notebook.emit(
+            'switch-page',
+            self.main_notebook.get_nth_page(page_num),
+            int(page_num)
+        )
 
     def set_from_settings(self):
         # Insert username of currently running user
