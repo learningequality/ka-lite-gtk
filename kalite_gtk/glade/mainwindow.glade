@@ -327,6 +327,7 @@
                             <property name="text" translatable="yes">8008</property>
                             <property name="adjustment">adjustment1</property>
                             <property name="value">8008</property>
+                            <signal name="value-changed" handler="on_port_spinbutton_value_changed" swapped="no"/>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>

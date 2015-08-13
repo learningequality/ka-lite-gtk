@@ -210,7 +210,9 @@ def start():
     Streaming:
     Starts the server
     """
-    for val in stream_kalite_command(conditional_sudo(get_command('start'))):
+    for val in stream_kalite_command(
+        conditional_sudo(get_command('start') + ['--port={}'.format(settings['port'])])
+    ):
         yield val
 
 
