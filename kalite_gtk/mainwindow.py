@@ -183,9 +183,7 @@ class Handler:
         We should make individual handlers for widgets, but this is easier...
         """
         if not self.unsaved_settings:
-            self.mainwindow.settings_feedback_label.set_label(
-                ''
-            )
+            self.mainwindow.settings_feedback_label.set_label('')
             return
         cli.settings.update(self.unsaved_settings)
         cli.save_settings()

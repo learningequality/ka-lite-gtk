@@ -18,6 +18,7 @@ from distutils.spawn import find_executable
 
 from .exceptions import ValidationError
 from . import validators
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +59,12 @@ if os.path.isfile(DEBIAN_USERNAME_FILE):
             # the one selected in the user settings, we should use the --port
             # option set for the debian service.
             if os.path.isfile(DEBIAN_OPTIONS_FILE):
-                debian_options = open(DEBIAN_OPTIONS_FILE, 'r').read()
-                port = re.compile(r'--port\s+(\d+)').search(debian_options)
-                port = validate['port'](port, none_if_invalid=True)
-                DEFAULT_PORT = port.group(1) if port else DEFAULT_PORT
+                current_server_options = open(DEBIAN_OPTIONS_FILE, 'r').read()
+                match_port = re.compile(
+                    r'--port=(?P<port>\d+)'
+                ).search(current_server_options)
+                if match_port:
+                    DEFAULT_PORT = int(match_port.group('port'))
         except ValidationError:
             logger.error('Non-existing username in {}'.format(DEBIAN_USERNAME_FILE))
 
@@ -243,8 +246,30 @@ def status():
 
 
 def save_settings():
+    global DEFAULT_PORT
     # Write settings to ka-lite-gtk settings file
     json.dump(settings, open(KALITE_GTK_SETTINGS_FILE, 'w'))
 
     # Write to debian settings if applicable
-    pass
+    if settings['port'] != DEFAULT_PORT:
+        current_server_options = open(DEBIAN_OPTIONS_FILE, 'r').read()
+        # Update the default port to be what we have just added to the settings
+        # because now we're writing it to the global debian config
+        DEFAULT_PORT = settings['port']
+        # Try replacing an existing port option
+        current_server_options = re.sub(
+            r'--port=\d+',
+            '--port={}'.format(settings['port']),
+            current_server_options
+        )
+        # ...If not found, append a new option 
+        if '--port' not in current_server_options:
+            current_server_options += ' --port={}'.format(settings['port'])
+        # Create a temporary file and copy it to the settings file
+        f = tempfile.NamedTemporaryFile('w')
+        f.write(current_server_options)
+        f.flush()
+        run_kalite_command(
+            sudo(shlex.split("cp {} /etc/ka-lite/server_options".format(f.name)))
+        )
+        f.close()
