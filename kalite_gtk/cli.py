@@ -241,8 +241,18 @@ def status():
     Blocking:
     Fetches server's current status as a string
     """
-    __, err, __ = run_kalite_command(get_command('status'))
-    return err
+    __, err, returncode = run_kalite_command(get_command('status'))
+    return err, returncode
+
+
+def get_urls_from_status(msg, return_code):
+    if return_code != 0:
+        return
+    url_match = re.compile(r'(http://[^\s]+)')
+    for line in msg.split():
+        match = url_match.search(line)
+        if match:
+            yield match.group(0)
 
 
 def save_settings():

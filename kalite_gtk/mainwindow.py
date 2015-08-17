@@ -222,7 +222,10 @@ class MainWindow:
         self.log_textview = self.builder.get_object('log_textview')
         self.diagnose_textview = self.builder.get_object('diagnose_textview')
         self.diagnostics = self.builder.get_object('diagnostics')
+        self.statusbar = self.builder.get_object('statusbar')
         self.status_entry = self.builder.get_object('status_label')
+        self.statusbar_box = self.builder.get_object('statusbar_box')
+        self.statusbar_left_fixed = self.builder.get_object('statusbar_left_fixed')
         self.default_user_radio_button = self.builder.get_object('radiobutton_user_default')
         self.kalite_command_entry = self.builder.get_object('kalite_command_entry')
         self.port_spinbutton = self.builder.get_object('port_spinbutton')
@@ -238,6 +241,11 @@ class MainWindow:
         self.start_stop_instructions_label = self.builder.get_object('start_stop_instructions_label')
         self.save_and_restart_button = self.builder.get_object('save_and_restart_button')
         self.main_notebook = self.builder.get_object('main_notebook')
+
+        # Will contain a vertical box for URLs with clickable LinkButton
+        # elements
+        self.url_box = None
+        self.urls = []
 
         # Save old label so we can continue to replace text
         self.start_stop_instructions_label_original_text = self.start_stop_instructions_label.get_label()
@@ -329,7 +337,28 @@ class MainWindow:
     @run_async
     def update_status(self):
         GLib.idle_add(self.set_status, "Updating status...")
-        GLib.idle_add(self.set_status, "Server status: " + (cli.status() or "Error fetching status").split("\n")[0])
+        status_msg, returncode = cli.status()
+        if returncode == 0:
+            urls = status_msg.split()
+            urls = cli.get_urls_from_status(status_msg, returncode)
+            if urls != self.urls:
+                if self.url_box:
+                    self.url_box.detach()
+                self.url_box = Gtk.VBox()
+                self.urls = urls
+                for url in urls:
+                    link_button = Gtk.LinkButton(url, url)
+                    link_button.set_alignment(0.0, 0.5)
+                    self.url_box.pack_start(
+                        link_button,
+                        False,
+                        False,
+                        0,
+                    )
+                self.statusbar_left_fixed.put(self.url_box, 0, 0)
+                self.statusbar_left_fixed.show_all()
+
+        GLib.idle_add(self.set_status, "Server status: " + (status_msg or "Error fetching status").split("\n")[0])
 
     def set_status(self, status):
         self.status_entry.set_label(status)
