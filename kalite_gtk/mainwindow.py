@@ -199,6 +199,9 @@ class Handler:
     def on_open_log_button_clicked(self, button):
         subprocess.Popen(shlex.split('xdg-open') + [os.path.join(cli.settings['home'], 'server.log')])
 
+    def on_open_content_button_clicked(self, button):
+        subprocess.Popen(shlex.split('xdg-open') + [cli.settings['content_root']])
+
     def on_port_spinbutton_value_changed(self, spinbutton):
         self.unsaved_settings['port'] = spinbutton.get_value_as_int()
         self.settings_changed()

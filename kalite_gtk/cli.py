@@ -262,7 +262,7 @@ def save_settings():
             '--port={}'.format(settings['port']),
             current_server_options
         )
-        # ...If not found, append a new option 
+        # ...If not found, append a new option
         if '--port' not in current_server_options:
             current_server_options += ' --port={}'.format(settings['port'])
         # Create a temporary file and copy it to the settings file
