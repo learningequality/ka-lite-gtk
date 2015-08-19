@@ -1,6 +1,7 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import pwd
 
 from .exceptions import ValidationError
@@ -37,4 +38,12 @@ def port(p):
     p = str(p)
     if not p.isdigit():
         raise ValidationError("Port '{}' is not a number".format(p))
+    return p
+
+
+@validator
+def command(p):
+    p = str(p).strip()
+    if not os.path.isfile(p):
+        raise ValidationError("No such file: {}".format(p))
     return p

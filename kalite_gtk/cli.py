@@ -18,7 +18,6 @@ from distutils.spawn import find_executable
 
 from .exceptions import ValidationError
 from . import validators
-import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +26,18 @@ KALITE_GTK_SETTINGS_FILE = os.path.expanduser(os.path.join('~', '.kalite', 'ka-l
 DEFAULT_USER = getpass.getuser()
 DEFAULT_PORT = 8008
 
-# A validator callback will raise an exception ValidationError
-validate = {
-    'user': validators.username,
-    'port': validators.port
-}
-
 # Constants from the ka-lite .deb package conventions
 DEBIAN_INIT_SCRIPT = '/etc/init.d/ka-lite'
 DEBIAN_USERNAME_FILE = '/etc/ka-lite/username'
+DEBIAN_HOME_FILE = '/etc/ka-lite/home'
 DEBIAN_OPTIONS_FILE = '/etc/ka-lite/server_options'
+
+# A validator callback will raise an exception ValidationError
+validate = {
+    'user': validators.username,
+    'port': validators.port,
+    'command': validators.command
+}
 
 if find_executable('pkexec'):
     SU_COMMAND = 'pkexec --user {username}'
@@ -149,7 +150,8 @@ def run_kalite_command(cmd, shell=False):
         shell=shell
     )
     # decode() necessary to convert streams from byte to str
-    return list(map(lambda x: x.decode(), p.communicate())) + [p.returncode]
+    stdout, stderr = p.communicate()
+    return [stdout.decode(), stderr.decode(), p.returncode]
 
 
 def stream_kalite_command(cmd, shell=False):
@@ -193,13 +195,25 @@ def is_installed():
 
 
 def install():
-    return run_kalite_command(
+    """
+    Installs system startup script
+    """
+    global DEFAULT_USER
+    # retval = run_kalite_command(
+    #     sudo([
+    #         "bash".encode('ascii'),
+    #         "-c".encode('ascii'),
+    #         "echo {username} > /etc/ka-lite/username && update-rc.d ka-lite defaults".format(username=settings['user']).encode('ascii')
+    #     ])
+    # )
+    retval = run_kalite_command(
         sudo([
             "bash".encode('ascii'),
             "-c".encode('ascii'),
-            "echo {username} > /etc/ka-lite/username && update-rc.d ka-lite defaults".format(username=settings['user']).encode('ascii')
+            "update-rc.d ka-lite defaults".encode('ascii')
         ])
     )
+    return retval
 
 
 def remove():
@@ -225,6 +239,17 @@ def stop():
     Stops the server
     """
     for val in stream_kalite_command(conditional_sudo(get_command('stop'))):
+        yield val
+
+
+def restart():
+    """
+    Streaming:
+    Stops the server
+    """
+    for val in stream_kalite_command(
+        conditional_sudo(get_command('restart') + ['--port={}'.format(settings['port'])])
+    ):
         yield val
 
 
@@ -259,27 +284,57 @@ def save_settings():
     global DEFAULT_PORT
     # Write settings to ka-lite-gtk settings file
     json.dump(settings, open(KALITE_GTK_SETTINGS_FILE, 'w'))
+    save_debian_settings()
+
+def save_debian_settings():
+    """
+    Conditionally saves the settings on a debian system, if the current setting
+    for DEFAULT_USER matches the one in settings['user']
+    """
+    global DEFAULT_USER, DEFAULT_PORT
+    print(DEFAULT_USER, settings['user'])
+    if DEFAULT_USER != settings['user']:
+        logger.info(
+            "Not saving debian settings for non-default user {}, install "
+            "system startup scripts first to make it the default".format(
+                settings['user']
+            )
+        )
+        return
+
+    bash_commands = []
 
     # Write to debian settings if applicable
     if settings['port'] != DEFAULT_PORT:
         current_server_options = open(DEBIAN_OPTIONS_FILE, 'r').read()
-        # Update the default port to be what we have just added to the settings
-        # because now we're writing it to the global debian config
-        DEFAULT_PORT = settings['port']
-        # Try replacing an existing port option
         current_server_options = re.sub(
             r'--port=\d+',
             '--port={}'.format(settings['port']),
             current_server_options
         )
+        current_server_options = current_server_options.strip()
         # ...If not found, append a new option
         if '--port' not in current_server_options:
             current_server_options += ' --port={}'.format(settings['port'])
         # Create a temporary file and copy it to the settings file
-        f = tempfile.NamedTemporaryFile('w')
-        f.write(current_server_options)
-        f.flush()
-        run_kalite_command(
-            sudo(shlex.split("cp {} /etc/ka-lite/server_options".format(f.name)))
-        )
-        f.close()
+        bash_commands.append('echo "{server_options}" > {options_file}'.format(
+            server_options=current_server_options,
+            options_file=DEBIAN_OPTIONS_FILE,
+        ))
+
+    if settings['home'] != DEFAULT_HOME:
+        bash_commands.append('echo "{home}" > {home_file}'.format(
+            home=settings['home'], home_file=DEBIAN_HOME_FILE
+        ))
+
+    __, stderr, returncode = run_kalite_command(
+        sudo([
+            "bash".encode('ascii'),
+            "-c".encode('ascii'),
+            " && ".join(bash_commands).encode('ascii')
+        ])
+    )
+    if returncode == 0:
+        logger.info("Successfully wrote new debian config")
+    else:
+        logger.error("Error writing debian config: {}".format(stderr))

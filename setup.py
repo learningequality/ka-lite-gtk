@@ -71,6 +71,7 @@ setup(
     cmdclass={'test': PyTest},
     tests_require=test_requirements,
     entry_points={
+        'console_scripts': [],
         'gui_scripts': [
             'ka-lite-gtk = kalite_gtk.__main__:main'
         ]

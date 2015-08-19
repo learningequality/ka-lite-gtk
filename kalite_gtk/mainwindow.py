@@ -10,7 +10,6 @@ from gi.repository import Gtk, Gdk, GLib, Pango
 from pkg_resources import resource_filename  # @UnresolvedImport
 
 from . import cli
-from kalite_gtk import validators
 from kalite_gtk.exceptions import ValidationError
 
 
@@ -139,62 +138,44 @@ class Handler:
             self.mainwindow.default_user_radio_button.set_active(True)
             return
         self.mainwindow.username_radiobutton.set_active(True)
-        try:
-            value = validators.username(value)
-            self.unsaved_settings['user'] = value
-            self.settings_changed()
-        except ValidationError:
-            self.mainwindow.settings_feedback_label.set_label(
-                'Username invalid'
-            )
+        self.unsaved_settings['user'] = value
+        self.settings_changed()
 
     @run_async
     def on_save_and_restart_button_clicked(self, button):
+        """
+        Save settings and restarts the server
+        """
+        cli.settings.update(self.unsaved_settings)
+        logger.info("Saving settings: {}".format(cli.settings))
         cli.save_settings()
+        self.unsaved_settings = {}
         GLib.idle_add(button.set_sensitive, False)
         GLib.idle_add(
             self.mainwindow.settings_feedback_label.set_label,
             'Settings saved, restarting server...'
         )
         self.log_message("Restarting KA Lite...\n")
+        GLib.idle_add(self.mainwindow.goto_log_page)
         GLib.idle_add(self.mainwindow.start_button.set_sensitive, False)
-        for stdout, stderr, returncode in cli.start():
+        for stdout, stderr, returncode in cli.restart():
             if stdout:
                 self.log_message(stdout)
         if returncode == 0:
             self.log_message("KA Lite restarted!\n")
         elif stderr:
             self.log_message(stderr)
-        GLib.idle_add(button.set_sensitive, False)
+        GLib.idle_add(self.mainwindow.start_button.set_sensitive, True)
+        self.mainwindow.update_status()
 
     def on_radiobutton_user_default_clicked(self, radiobutton):
-        if cli.settings['user'] == cli.DEFAULT_USER:
-            if 'user' in self.unsaved_settings:
-                del self.unsaved_settings['user']
-            return
-        self.unsaved_settings['user'] = cli.DEFAULT_USER
-        self.settings_changed()
+        if 'user' in self.unsaved_settings and self.unsaved_settings['user'] == cli.DEFAULT_USER:
+            del self.unsaved_settings['user']
+            self.settings_changed()
 
     def on_radiobutton_username_clicked(self, radiobutton):
-        self.mainwindow.username_entry.grab_focus()
-
-    def settings_changed(self):
-        """
-        We should make individual handlers for widgets, but this is easier...
-        """
-        if not self.unsaved_settings:
-            self.mainwindow.settings_feedback_label.set_label('')
-            return
-        cli.settings.update(self.unsaved_settings)
-        cli.save_settings()
-        self.unsaved_settings = {}
-        self.mainwindow.settings_feedback_label.set_label(
-            'Settings OK - they will be saved and take effect when you restart the server!'
-        )
-
-    def log_message(self, msg):
-        """Logs a message using idle callback"""
-        GLib.idle_add(self.mainwindow.log_message, msg)
+        if radiobutton.get_active():
+            self.mainwindow.username_entry.grab_focus()
 
     def on_open_log_button_clicked(self, button):
         subprocess.Popen(shlex.split('xdg-open') + [os.path.join(cli.settings['home'], 'server.log')])
@@ -204,7 +185,55 @@ class Handler:
 
     def on_port_spinbutton_value_changed(self, spinbutton):
         self.unsaved_settings['port'] = spinbutton.get_value_as_int()
+        if 'port' in self.unsaved_settings:
+            if self.unsaved_settings['port'] == int(cli.settings['port']):
+                del self.unsaved_settings['port']
         self.settings_changed()
+
+    def on_kalite_command_entry_changed(self, entry):
+        self.unsaved_settings['command'] = entry.get_text()
+        if 'command' in self.unsaved_settings:
+            if self.unsaved_settings['command'] == cli.settings['command']:
+                del self.unsaved_settings['command']
+        self.settings_changed()
+
+    def settings_changed(self):
+        """
+        Called when settings are changed
+        """
+
+        if not self.unsaved_settings:
+            GLib.idle_add(
+                self.mainwindow.settings_feedback_label.set_label,
+                "No settings changed. Settings will not take effect until you save and reload"
+            )
+            GLib.idle_add(self.mainwindow.save_and_restart_button.set_sensitive, False)
+            return
+
+        for setting, value in self.unsaved_settings.items():
+            if setting not in cli.validate:
+                continue
+            try:
+                value = cli.validate[setting](value)
+                self.unsaved_settings[setting] = value
+            except ValidationError as e:
+                self.mainwindow.settings_feedback_label.set_label(
+                    e.err_msg
+                )
+                del self.unsaved_settings[setting]
+
+        if not self.unsaved_settings:
+            GLib.idle_add(self.mainwindow.save_and_restart_button.set_sensitive, False)
+        else:
+            logger.debug('Unsaved settings: {}'.format(self.unsaved_settings))
+            GLib.idle_add(self.mainwindow.save_and_restart_button.set_sensitive, True)
+            self.mainwindow.settings_feedback_label.set_label(
+                "Settings are valid - click 'Save and restart'."
+            )
+
+    def log_message(self, msg):
+        """Logs a message using idle callback"""
+        GLib.idle_add(self.mainwindow.log_message, msg)
 
 
 class MainWindow:
@@ -343,7 +372,7 @@ class MainWindow:
             urls = cli.get_urls_from_status(status_msg, returncode)
             if urls != self.urls:
                 if self.url_box:
-                    self.url_box.detach()
+                    GLib.idle_add(Gtk.Container.remove, self.statusbar_left_fixed, self.url_box)
                 self.url_box = Gtk.VBox()
                 self.urls = urls
                 for url in urls:
@@ -356,7 +385,7 @@ class MainWindow:
                         0,
                     )
                 self.statusbar_left_fixed.put(self.url_box, 0, 0)
-                self.statusbar_left_fixed.show_all()
+                GLib.idle_add(self.statusbar_left_fixed.show_all)
 
         GLib.idle_add(self.set_status, "Server status: " + (status_msg or "Error fetching status").split("\n")[0])
 
