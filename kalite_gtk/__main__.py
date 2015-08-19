@@ -64,6 +64,8 @@ from kalite_gtk.mainwindow import MainWindow
 
 
 def main(args=None):
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     __ = MainWindow()
     Gtk.main()
 
