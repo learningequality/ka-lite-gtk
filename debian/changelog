@@ -1,3 +1,15 @@
+ka-lite-gtk (0.3~b2-0ubuntu1) precise; urgency=medium
+
+  * Beta 2: Write the port option correctly in /etc/ka-lite/server_options
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Wed, 19 Aug 2015 23:23:30 +0200
+
+ka-lite-gtk (0.3~b1-0ubuntu1) precise; urgency=medium
+
+  * New upstream release
+
+ -- Benjamin Bach <benjamin@learningequality.org>  Wed, 19 Aug 2015 19:24:35 +0200
+
 ka-lite-gtk (0.3~a2-0ubuntu2) precise; urgency=medium
 
   * Adding debian/source
