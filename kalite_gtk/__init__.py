@@ -5,6 +5,6 @@ import logging
 import os
 import sys
 
-__version__ = "0.3b1"
+__version__ = "0.3b2"
 
 VERSION = __version__.split(".")
