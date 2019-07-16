@@ -27,13 +27,28 @@ Features
 * Add and remove system services for automatically starting up KA Lite.
 * Notification area icon (TODO)
 
+Installation
+------------
+
+Installing from PPA::
+
+    sudo add-apt-repository ppa:learningequality/ka-lite
+    sudo apt-get update
+    sudo apt-get install ka-lite-gtk
+
+After installing from PPA, a launcher will appear in your start menu.
+
+Installing from PyPi::
+
+    sudo pip install ka-lite-gtk
+    python -m kalite_gtk
 
 Development
 -----------
 
 Run directly from source::
 
-    python kalite_gtk --debug
+    python -m kalite_gtk --debug
 
 Installing in editable mode and running directly::
 
