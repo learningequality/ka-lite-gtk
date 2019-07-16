@@ -18,6 +18,9 @@ User interface for KA Lite server control (GTK3)
 * Free software: MIT license
 * Documentation: https://ka-lite-gtk.readthedocs.org.
 
+.. image:: kalite_gtk_screenshot.png
+        :alt: Screenshot of KA Lite GTK control panel
+
 
 Features
 --------
